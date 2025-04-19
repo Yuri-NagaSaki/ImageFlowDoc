@@ -1,6 +1,6 @@
 import { defineDocs, defineConfig } from 'fumadocs-mdx/config';
 
-// Options: https://fumadocs.vercel.app/docs/mdx/collections#define-docs
+// Define the main documentation collection
 export const docs = defineDocs({
   dir: 'content/docs',
 });
@@ -8,5 +8,7 @@ export const docs = defineDocs({
 export default defineConfig({
   mdxOptions: {
     // MDX options
+    remarkPlugins: [],
+    rehypePlugins: [],
   },
 });
