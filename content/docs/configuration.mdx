@@ -1,6 +1,5 @@
 ---
-title: 配置指南
-description: 关于使用 .env 文件配置 ImageFlow 的详细指南。
+title: 环境变量说明
 ---
 
 通过创建和编辑位于 ImageFlow 项目根目录下的 `.env` 文件来配置系统。如果您还没有 `.env` 文件，请先将 `.env.example` 复制为 `.env`。
@@ -70,6 +69,20 @@ FORCE_LOSSLESS=false
 # 检查并删除过期图片的间隔时间 (例如：1h, 30m, 24h)。
 # 如果未设置或无效，默认为 24h。
 CLEANUP_INTERVAL=24h
+
+# 只有前后端分离才需要的参数
+# 前端配置
+# 如果您只想导出静态网站，可以将以下内容设置为空（分离必须填写）
+NEXT_PUBLIC_API_URL=
+
+
+# Next.js 图片组件的远程模式（逗号分隔）
+# 示例：
+# 单域名：example.com
+# 多域名：example.com,cdn.example.com
+# 协议：https://example.com,http://cdn.example.com
+# 一般填写后端域名地址和S3的自定义域名地址
+NEXT_PUBLIC_REMOTE_PATTERNS=
 ```
 
 **注意:**

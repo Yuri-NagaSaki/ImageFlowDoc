@@ -1,0 +1,303 @@
+---
+title: 使用指南
+---
+
+## 部署 ImageFlow
+
+ImageFlow 支持多种部署方式。这里我们将介绍使用 Docker Compose 进行前后端分离部署的方法。这种方式将后端 API 服务和前端 Web UI 分开运行，提供了更好的灵活性和可扩展性。
+
+您可以选择使用预构建的 Docker 镜像或者从源代码自行构建。
+
+### 1. 使用预构建镜像部署 (推荐)
+
+这种方法最简单快捷，适用于快速启动或不想处理构建过程的用户。
+
+**前提条件:**
+
+*   已安装 Docker
+*   已安装 Docker Compose
+
+**步骤:**
+
+1.  **下载编排文件:** 获取 `docker-compose-separate.yaml` 文件。您可以从项目仓库下载，或直接复制以下内容保存为 `docker-compose-separate.yaml`：
+    ```yaml
+    # 内容来自 @docker-compose-separate.yaml
+    version: '3.8'
+
+    services:
+      backend:
+        image: soyorins/imageflow-backend:latest
+        container_name: imageflow-backend
+        ports:
+          - "8686:8686"
+        volumes:
+          - ./static/images:/app/static/images
+          - ./config:/app/config
+        environment:
+          - API_KEY=${API_KEY:-default_api_key} # 请务必修改为强密码
+          - STORAGE_TYPE=${STORAGE_TYPE:-local}
+          - LOCAL_STORAGE_PATH=/app/static/images
+          # ... (其他 S3, Redis 等配置，根据需要修改) ...
+          - REDIS_ENABLED=${REDIS_ENABLED:-true}
+          - REDIS_HOST=redis
+        restart: unless-stopped
+        depends_on:
+          - redis
+        networks:
+          - imageflow-network
+
+      frontend:
+        image: soyorins/imageflow-frontend:latest
+        container_name: imageflow-frontend
+        ports:
+          - "3000:3000"
+        environment:
+          # 必须设置！指向您的后端服务地址
+          - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8686}
+          # 可选：如果需要 Next.js Image 优化，配置后端域名
+          - NEXT_PUBLIC_REMOTE_PATTERNS=${NEXT_PUBLIC_REMOTE_PATTERNS:-localhost:8686}
+        depends_on:
+          - backend
+        restart: unless-stopped
+        networks:
+          - imageflow-network
+
+      redis:
+        image: redis:alpine
+        container_name: imageflow-redis
+        ports:
+          - "6379:6379" # 可以取消注释以从宿主机访问 Redis，但不推荐在生产环境这样做
+        volumes:
+          - redis_data:/data
+        restart: unless-stopped
+        networks:
+          - imageflow-network
+
+    networks:
+      imageflow-network:
+        driver: bridge
+
+    volumes:
+      redis_data:
+    ```
+
+2.  **创建配置文件和目录:** 在 `docker-compose-separate.yaml` 文件所在的目录下：
+    *   创建一个 `.env` 文件用于存放敏感配置和环境变量。
+    *   创建一个 `static/images` 目录用于本地存储（如果 `STORAGE_TYPE=local`）。
+    *   (可选) 创建一个 `config` 目录并放入自定义的 `config.yaml` (如果需要覆盖默认配置)。
+
+3.  **配置 `.env` 文件:**
+    ```dotenv
+    # .env 文件示例
+    # --- 后端配置 ---
+    API_KEY=your_strong_api_key_here  # 必须设置一个强 API 密钥！
+    STORAGE_TYPE=local                # 存储类型 (local 或 s3)
+    # LOCAL_STORAGE_PATH=/app/static/images # 容器内路径，通常无需修改
+
+    # 如果使用 S3, 配置以下变量
+    # S3_ENDPOINT=https://your-s3-endpoint.com
+    # S3_REGION=your-region
+    # S3_ACCESS_KEY=your_access_key
+    # S3_SECRET_KEY=your_secret_key
+    # S3_BUCKET=your_bucket_name
+
+    # 自定义域名 (如果通过反向代理访问)
+    # CUSTOM_DOMAIN=https://imageflow.yourdomain.com
+
+    # Redis 配置 (通常使用默认值即可)
+    # REDIS_PASSWORD=your_redis_password
+
+    # --- 前端配置 ---
+    # 必须设置！前端访问后端的 URL
+    # 如果在同一台机器部署，通常是 http://<服务器IP或域名>:8686
+    # 如果使用反向代理，可能是 https://imageflow.yourdomain.com
+    NEXT_PUBLIC_API_URL=http://localhost:8686
+
+    # 可选：用于 Next.js Image 组件优化。通常是后端服务的域名和端口
+    # 如果使用反向代理，填写代理后的域名和端口 (如果端口不是 443/80)
+    NEXT_PUBLIC_REMOTE_PATTERNS=localhost:8686
+    ```
+    **重要:**
+    *   务必替换 `your_strong_api_key_here` 为一个安全的 API 密钥。
+    *   确保 `NEXT_PUBLIC_API_URL` 指向可以从用户浏览器访问到的后端 API 地址。如果您的服务部署在服务器上，请将 `localhost` 替换为服务器的 IP 地址或域名。如果使用了反向代理，则填写代理后的 URL。
+    *   如果需要 Next.js 的 `next/image` 组件优化图片，请配置 `NEXT_PUBLIC_REMOTE_PATTERNS`，其值为后端服务的域名（和端口，如果非标准端口）。
+
+4.  **启动服务:** 在包含 `docker-compose-separate.yaml` 和 `.env` 文件的目录中运行：
+    ```bash
+    docker-compose -f docker-compose-separate.yaml up -d
+    ```
+
+5.  **访问:**
+    *   前端 UI: `http://<your_server_ip_or_domain>:3000`
+    *   后端 API: `http://<your_server_ip_or_domain>:8686` (主要供前端调用)
+
+### 2. 从源代码构建部署
+
+这种方法允许您自定义代码或使用最新开发版本。
+
+**前提条件:**
+
+*   已安装 Docker
+*   已安装 Docker Compose
+*   项目源代码 (包含 `Dockerfile.backend` 和 `Dockerfile.frontend`)
+
+**步骤:**
+
+1.  **获取源代码和编排文件:** 克隆项目仓库或下载源代码，确保包含 `Dockerfile.backend`, `Dockerfile.frontend` 和 `docker-compose-separate-build.yaml` 文件。
+    ```yaml
+    # 内容来自 @docker-compose-separate-build.yaml
+    version: '3.8'
+
+    services:
+      backend:
+        build:
+          context: .
+          dockerfile: Dockerfile.backend
+        container_name: imageflow-backend
+        ports:
+          - "8686:8686"
+        volumes:
+          - ./static/images:/app/static/images
+          - ./config:/app/config
+        environment:
+          - API_KEY=${API_KEY:-default_api_key} # 请务必修改为强密码
+          # ... (其他配置与 docker-compose-separate.yaml 类似) ...
+          - REDIS_ENABLED=${REDIS_ENABLED:-true}
+          - REDIS_HOST=redis
+        restart: unless-stopped
+        depends_on:
+          - redis
+        networks:
+          - imageflow-network
+
+      frontend:
+        build:
+          context: .
+          dockerfile: Dockerfile.frontend
+          # 构建时传递环境变量给 Dockerfile
+          args:
+            NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8686}
+            NEXT_PUBLIC_REMOTE_PATTERNS: ${NEXT_PUBLIC_REMOTE_PATTERNS:-backend:8686}
+        container_name: imageflow-frontend
+        ports:
+          - "3000:3000"
+        # 运行时环境变量 (也可以在 .env 中设置，但构建时参数优先)
+        environment:
+          - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8686}
+          - NEXT_PUBLIC_REMOTE_PATTERNS=${NEXT_PUBLIC_REMOTE_PATTERNS:-backend:8686}
+        depends_on:
+          - backend
+        restart: unless-stopped
+        networks:
+          - imageflow-network
+
+      redis:
+        # ... (与 docker-compose-separate.yaml 相同) ...
+        image: redis:alpine
+        container_name: imageflow-redis
+        ports:
+          - "6379:6379"
+        volumes:
+          - redis_data:/data
+        restart: unless-stopped
+        networks:
+          - imageflow-network
+
+    networks:
+      imageflow-network:
+        driver: bridge
+
+    volumes:
+      redis_data:
+    ```
+
+2.  **创建配置文件和目录:** 与使用预构建镜像类似，创建 `.env`, `static/images`, 和可选的 `config` 目录。
+
+3.  **配置 `.env` 文件:** 参考上面"使用预构建镜像部署"部分的 `.env` 示例进行配置。**请注意:** `docker-compose-separate-build.yaml` 中的前端服务使用了 `args` 将 `NEXT_PUBLIC_API_URL` 和 `NEXT_PUBLIC_REMOTE_PATTERNS` 传递到构建过程中。虽然 `environment` 部分也设置了它们，但构建时参数会优先用于 Next.js 应用的构建。建议在 `.env` 文件中正确设置这些值。
+
+4.  **构建并启动服务:** 在项目根目录（包含 `Dockerfile` 文件和 `docker-compose-separate-build.yaml`）中运行：
+    ```bash
+    docker-compose -f docker-compose-separate-build.yaml up -d --build
+    ```
+    `--build` 参数会强制 Docker Compose 重新构建镜像。
+
+5.  **访问:** 与使用预构建镜像相同。
+
+### 注意事项
+
+*   **安全性:** 务必设置强 `API_KEY`。不要将 Redis 端口 `6379` 暴露给公网，除非有严格的防火墙和密码保护。
+*   **反向代理:** 在生产环境中，强烈建议使用 Nginx 或 Caddy 等反向代理来处理 TLS 加密 (HTTPS)、域名绑定、请求路由和负载均衡。前端可以直接通过域名访问，反向代理将请求转发到后端的 `http://localhost:8686`。同时，应配置 `CUSTOM_DOMAIN` 环境变量。
+*   **环境变量:** Docker Compose 会自动加载同目录下 `.env` 文件中的环境变量。这是配置敏感信息的推荐方式。
+*   **存储:** 确保 `volumes` 中映射的宿主机目录 (`./static/images`) 具有正确的读写权限。如果使用 S3，请确保 S3 凭证和配置正确。
+*   **前端 API URL:** `NEXT_PUBLIC_API_URL` 是前端应用在浏览器中调用后端 API 时使用的地址。它必须是浏览器可访问的地址。如果使用 `docker-compose-separate-build.yaml` 构建，Dockerfile 会将此变量构建到前端代码中，因此修改 `.env` 后需要重新构建前端镜像 (`docker-compose -f docker-compose-separate-build.yaml build frontend`) 并重启服务。
+
+本指南介绍如何使用 ImageFlow 的核心功能。
+
+## API 密钥认证
+
+为了安全起见，图片上传和管理功能需要进行 API 密钥认证。
+
+1.  **设置 API 密钥:** 在 `.env` 文件中定义您的 `API_KEY`。请参见 [配置指南](./configuration)。
+2.  **通过 Web UI 输入:** 首次访问上传 (`/`) 或管理 (`/manage.html`) 页面时，系统会提示您输入 API 密钥。
+3.  **自动保存:** 验证成功后，API 密钥会保存在浏览器的本地存储中，方便后续会话使用。
+
+## 上传图片
+
+访问用户友好的上传界面，通常是根 URL (例如 `http://localhost:8686/`)。
+
+### 步骤
+
+1.  将图片文件拖拽到上传区域，或单击上传区域打开文件选择对话框。
+2.  (可选) 使用下拉菜单为所选图片设置**过期时间**。过期图片会被自动删除。
+3.  (可选) 添加**标签**以对图片进行分类。输入标签后按 Enter 键。
+4.  查看待上传图片的实时预览。
+5.  点击"上传"按钮。
+
+### 处理流程
+
+*   系统自动检测图片是横向还是纵向。
+*   成功上传后，图片会在后台异步转换为 WebP 和 AVIF 格式。
+*   原始图片、转换后的格式以及元数据（包括标签和过期时间）将根据您的[配置](./configuration)进行存储。
+
+## 管理图片
+
+访问管理界面 `/manage.html` (例如 `http://localhost:8686/manage.html`)。此页面需要 API 密钥认证。
+
+*   **查看:** 显示所有已上传图片的缩略图。
+*   **筛选:** 按格式（原始、WebP、AVIF、GIF）、方向（横向、纵向）或标签筛选图片。
+*   **详情:** 点击图片缩略图可查看详细信息，包括 ID、格式、尺寸、大小、标签和存储路径。
+*   **复制 URL:** 轻松复制任何图片格式的直接 URL。
+*   **删除:** 选择图片后点击删除按钮。此操作需要 API 密钥确认，并将永久删除该图片及其所有关联格式（原始、WebP、AVIF）和元数据。
+
+## 获取随机图片 (API)
+
+通过简单的 GET 请求获取随机图片的 URL。此端点不需要 API 密钥认证。
+
+**端点:** `/api/random`
+
+**方法:** `GET`
+
+**查询参数:**
+
+*   `tag` (可选): 按特定标签筛选随机图片。示例: `/api/random?tag=nature`
+
+**行为:**
+
+*   API 会根据客户端浏览器发送的 `Accept` 请求头智能地提供最合适的图片格式（WebP、AVIF 或原始格式）。
+*   它还会考虑 `User-Agent` 请求头指示的设备类型（桌面/移动），以可能优先选择横向或纵向图片，但主要选择仍是随机的。
+
+**请求示例:**
+
+```bash
+curl -H "Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8" \
+     -H "User-Agent: Mozilla/5.0 (Linux; Android 10; SM-G975F) ..." \
+     http://localhost:8686/api/random?tag=风景
+```
+
+**响应示例:**
+
+响应体将包含所选图片的 URL，如果找不到匹配的图片，则返回 404 错误。
+
+```
+http://localhost:8686/static/images/portrait/avif/your-image-id.avif
+``` 
