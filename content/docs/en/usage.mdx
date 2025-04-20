@@ -1,0 +1,75 @@
+---
+title: Usage Guide
+description: Learn how to use ImageFlow's features, including uploading, managing, and retrieving images.
+---
+
+This guide explains how to use the core functionalities of ImageFlow.
+
+## API Key Authentication
+
+Image upload and management functionalities require API key authentication for security.
+
+1.  **Set the API key:** Define your `API_KEY` in the `.env` file. See the [Configuration Guide](./configuration).
+2.  **Enter via Web UI:** When accessing the upload (`/`) or management (`/manage.html`) pages for the first time, you'll be prompted to enter the API key.
+3.  **Automatic Saving:** After successful validation, the API key is saved in your browser's local storage for future sessions.
+
+## Uploading Images
+
+Access the user-friendly upload interface, typically at the root URL (e.g., `http://localhost:8686/`).
+
+### Steps
+
+1.  Drag and drop image files onto the upload area or click the area to open a file selection dialog.
+2.  (Optional) Set an **expiration time** for the selected images using the dropdown menu. Expired images are automatically deleted.
+3.  (Optional) Add **tags** to categorize the images. Type a tag and press Enter.
+4.  See a real-time preview of the images selected for upload.
+5.  Click the "Upload" button.
+
+### Process
+
+*   The system automatically detects if images are landscape or portrait.
+*   After successful upload, images are asynchronously converted to WebP and AVIF formats in the background.
+*   Original images, converted formats, and metadata (including tags and expiration) are stored according to your [configuration](./configuration).
+
+## Managing Images
+
+Access the management interface at `/manage.html` (e.g., `http://localhost:8686/manage.html`). This page requires API key authentication.
+
+*   **View:** See thumbnails of all uploaded images.
+*   **Filter:** Filter images by format (Original, WebP, AVIF, GIF), orientation (Landscape, Portrait), or tags.
+*   **Details:** Click an image thumbnail to view detailed information, including its ID, format, dimensions, size, tags, and storage path.
+*   **Copy URL:** Easily copy the direct URL for any image format.
+*   **Delete:** Select images and click the delete button. This action requires API key confirmation and permanently removes the image and all its associated formats (original, WebP, AVIF) and metadata.
+
+## Getting Random Images (API)
+
+Retrieve a random image URL via a simple GET request. This endpoint does not require API key authentication.
+
+**Endpoint:** `/api/random`
+
+**Method:** `GET`
+
+**Query Parameters:**
+
+*   `tag` (optional): Filter random images by a specific tag. Example: `/api/random?tag=nature`
+
+**Behavior:**
+
+*   The API intelligently serves the most suitable image format (WebP, AVIF, or original) based on the `Accept` header sent by the client's browser.
+*   It also considers the device type (desktop/mobile) indicated by the `User-Agent` header to potentially prioritize landscape or portrait images, although the primary selection is random.
+
+**Example Request:**
+
+```bash
+curl -H "Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8" \
+     -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) ..." \
+     http://localhost:8686/api/random?tag=landscape
+```
+
+**Example Response:**
+
+The response body will contain the URL to the selected image, or a 404 error if no matching images are found.
+
+```
+http://localhost:8686/static/images/landscape/avif/your-image-id.avif
+``` 

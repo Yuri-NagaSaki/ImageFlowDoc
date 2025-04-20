@@ -1,0 +1,193 @@
+---
+title: API 参考
+description: ImageFlow API 端点的详细参考文档。
+---
+
+本节提供有关可用 API 端点的详细信息。
+
+**认证:** 标记为 `需要 API 密钥` 的端点需要在请求头中包含一个有效的 `X-API-Key`，其值需与您配置中的 `API_KEY` 相匹配。
+
+---
+
+### `GET /api/random`
+
+获取一个随机图片的 URL，该 URL 会根据浏览器能力（WebP/AVIF 支持）进行适配，并可选择按标签过滤。
+
+-   **方法:** `GET`
+-   **认证:** 不需要
+-   **查询参数:**
+    -   `tag` (字符串, 可选): 按特定标签筛选图片。
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `text/plain`
+    -   响应体: 图片的 URL (例如：`http://localhost:8686/static/images/landscape/webp/image-id.webp`)
+-   **错误响应:**
+    -   状态码: `404 Not Found` - 如果没有图片符合条件。
+    -   状态码: `500 Internal Server Error` - 如果发生意外错误。
+
+---
+
+### `POST /api/upload`
+
+上传一张或多张新图片，进行处理并存储。
+
+-   **方法:** `POST`
+-   **认证:** `需要 API 密钥`
+-   **请求体:** `multipart/form-data`
+    -   `images[]` (文件, 必需): 一个或多个要上传的图片文件。
+    -   `expiryMinutes` (整数, 可选): 图片过期并被删除前的分钟数。0 或省略表示永不过期。
+    -   `tags` (字符串数组, 可选): 与上传图片关联的标签。
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: 包含成功消息的 JSON 对象。 `{"message":"Upload successful, processing started."}` (上传成功，处理已开始)
+-   **错误响应:**
+    -   状态码: `400 Bad Request` - 缺少 `images[]` 字段、无效的 `expiryMinutes` 或文件过多。
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   状态码: `500 Internal Server Error` - 文件保存或处理启动过程中出错。
+
+---
+
+### `POST /api/delete-image`
+
+删除指定的图片及其所有关联格式（原始、WebP、AVIF）和元数据。
+
+-   **方法:** `POST`
+-   **认证:** `需要 API 密钥`
+-   **请求体:** `application/json`
+    ```json
+    {
+      "id": "要删除的图片ID",
+      "storageType": "local" // 或 "s3"
+    }
+    ```
+    -   `id` (字符串, 必需): 要删除图片的唯一 ID。
+    -   `storageType` (字符串, 必需): 图片所在的存储类型 (`local` 或 `s3`)。
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: `{"message":"Image deleted successfully"}` (图片删除成功)
+-   **错误响应:**
+    -   状态码: `400 Bad Request` - 无效的 JSON 负载或缺少字段。
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   状态码: `404 Not Found` - 找不到指定 ID 的图片。
+    -   状态码: `500 Internal Server Error` - 从存储中删除或移除元数据时出错。
+
+---
+
+### `POST /api/validate-api-key`
+
+验证提供的 API 密钥。
+
+-   **方法:** `POST`
+-   **认证:** 检查 `X-API-Key` 请求头。
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: `{"valid": true}`
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   响应体: `{"valid": false}`
+
+---
+
+### `GET /api/images`
+
+列出所有已上传的图片，可选择按标签过滤。
+
+-   **方法:** `GET`
+-   **认证:** `需要 API 密钥`
+-   **查询参数:**
+    -   `tag` (字符串, 可选): 按特定标签筛选图片。
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: 图片元数据对象的 JSON 数组。
+        ```json
+        [
+          {
+            "id": "unique-id-1",
+            "filename": "image1.jpg",
+            "contentType": "image/jpeg",
+            "size": 102400,
+            "width": 1920,
+            "height": 1080,
+            "orientation": "landscape",
+            "storageType": "local",
+            "uploadTime": "2023-10-27T10:00:00Z",
+            "expiryTime": null, // 或 "2023-11-27T10:00:00Z"
+            "tags": ["nature", "landscape"],
+            "formats": {
+              "original": "/static/images/original/landscape/unique-id-1.jpg",
+              "webp": "/static/images/landscape/webp/unique-id-1.webp",
+              "avif": "/static/images/landscape/avif/unique-id-1.avif"
+            }
+          }
+          // ... 更多图片
+        ]
+        ```
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   状态码: `500 Internal Server Error` - 读取元数据时出错。
+
+---
+
+### `GET /api/config`
+
+获取当前的（非敏感）系统配置。
+
+-   **方法:** `GET`
+-   **认证:** `需要 API 密钥`
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: 包含配置详情的 JSON 对象，例如 `STORAGE_TYPE`, `MAX_UPLOAD_COUNT`, `REDIS_ENABLED` 等。（敏感密钥如 `API_KEY`, `S3_SECRET_KEY` 会被省略）。
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+
+---
+
+### `POST /api/trigger-cleanup`
+
+手动触发清理过期图片的进程。
+
+-   **方法:** `POST`
+-   **认证:** `需要 API 密钥`
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: `{"message":"Expired image cleanup triggered."}` (过期图片清理已触发)
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+
+---
+
+### `GET /api/tags`
+
+获取当前与图片关联的所有唯一标签列表。
+
+-   **方法:** `GET`
+-   **认证:** `需要 API 密钥`
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: 唯一标签字符串的 JSON 数组。`["nature", "city", "portrait", "landscape"]`
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   状态码: `500 Internal Server Error` - 检索标签时出错。
+
+---
+
+### `GET /api/debug/tags`
+
+获取详细的标签信息，显示每个标签关联的图片。（主要用于调试）。
+
+-   **方法:** `GET`
+-   **认证:** `需要 API 密钥`
+-   **成功响应:**
+    -   状态码: `200 OK`
+    -   Content-Type: `application/json`
+    -   响应体: JSON 对象，其中键是标签，值是图片 ID 数组。`{"nature": ["id1", "id3"], "city": ["id2"]}`
+-   **错误响应:**
+    -   状态码: `401 Unauthorized` - API 密钥无效或缺失。
+    -   状态码: `500 Internal Server Error` - 检索标签详情时出错。 

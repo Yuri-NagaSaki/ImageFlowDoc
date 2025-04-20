@@ -1,0 +1,79 @@
+---
+title: Configuration Guide
+description: Detailed guide on configuring ImageFlow using the .env file.
+---
+
+Configure the system by creating and editing the `.env` file at the root of your ImageFlow project. Copy `.env.example` to `.env` if you haven't already.
+
+```bash
+cp .env.example .env
+```
+
+Here are the main configuration options:
+
+```ini title=".env"
+# === General Settings ===
+PORT=8686                 # Port the application will listen on
+
+# === API Key Configuration ===
+# Set a strong, unique API key for securing upload and management endpoints.
+API_KEY=your_api_key_here
+
+# === Storage Configuration ===
+# Choose the storage backend for your images.
+# Options: 'local' or 's3' (for S3-compatible storage like AWS S3, R2, MinIO)
+STORAGE_TYPE=local
+
+# --- Local Storage Settings (if STORAGE_TYPE=local) ---
+# Path relative to the application root where images will be stored.
+LOCAL_STORAGE_PATH=static/images
+
+# --- S3 Storage Settings (if STORAGE_TYPE=s3) ---
+# Required if STORAGE_TYPE is 's3'.
+S3_ENDPOINT=            # Your S3-compatible endpoint URL (e.g., s3.amazonaws.com or your MinIO address)
+S3_REGION=              # The region of your S3 bucket (e.g., us-east-1)
+S3_ACCESS_KEY=          # Your S3 access key ID
+S3_SECRET_KEY=          # Your S3 secret access key
+S3_BUCKET=              # The name of the S3 bucket to use
+S3_USE_SSL=true           # Use SSL/TLS for S3 connection (true/false)
+# Optional: Specify a custom domain/CDN URL to serve images from.
+# If set, image URLs will use this domain instead of the S3 endpoint.
+# Example: https://cdn.yourdomain.com
+CUSTOM_DOMAIN=
+
+# === Redis Configuration (Optional) ===
+# Enable Redis for improved performance storing metadata and tags.
+# If false, metadata will be stored as JSON files alongside images.
+REDIS_ENABLED=false
+
+# --- Redis Connection Settings (if REDIS_ENABLED=true) ---
+REDIS_HOST=localhost      # Redis server hostname or IP address
+REDIS_PORT=6379           # Redis server port
+REDIS_PASSWORD=          # Redis password (leave blank if none)
+REDIS_DB=0                # Redis database number
+REDIS_PREFIX=imageflow:   # Prefix for all keys stored in Redis to avoid conflicts
+REDIS_TLS_ENABLED=false   # Enable TLS/SSL for Redis connection (true/false)
+
+# === Image Processing Configuration ===
+# Maximum number of images allowed in a single upload request.
+MAX_UPLOAD_COUNT=20
+# Quality setting for WebP/AVIF conversion (1-100, higher means better quality and larger size).
+IMAGE_QUALITY=80
+# Number of concurrent threads used for image conversion tasks.
+WORKER_THREADS=4
+# AVIF compression effort/speed (0-10, lower is faster, higher offers better compression).
+COMPRESSION_EFFORT=6
+# Force lossless compression for WebP/AVIF (true/false). May increase file size significantly.
+FORCE_LOSSLESS=false
+
+# === Cleanup Configuration ===
+# Interval for checking and deleting expired images (e.g., 1h, 30m, 24h).
+# If not set or invalid, defaults to 24h.
+CLEANUP_INTERVAL=24h
+```
+
+**Notes:**
+
+*   Remember to restart the ImageFlow service after changing the `.env` file for the changes to take effect.
+*   For S3 storage, ensure the provided credentials have the necessary permissions (e.g., `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket`) for the specified bucket.
+*   If using Redis, ensure the Redis server is running and accessible from the ImageFlow application. 

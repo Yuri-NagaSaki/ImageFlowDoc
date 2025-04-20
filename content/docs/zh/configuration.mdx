@@ -1,0 +1,79 @@
+---
+title: 配置指南
+description: 关于使用 .env 文件配置 ImageFlow 的详细指南。
+---
+
+通过创建和编辑位于 ImageFlow 项目根目录下的 `.env` 文件来配置系统。如果您还没有 `.env` 文件，请先将 `.env.example` 复制为 `.env`。
+
+```bash
+cp .env.example .env
+```
+
+以下是主要的配置项说明：
+
+```ini title=".env"
+# === 通用设置 ===
+PORT=8686                 # 应用程序监听的端口
+
+# === API 密钥配置 ===
+# 设置一个强壮且唯一的 API 密钥，用于保护上传和管理接口。
+API_KEY=your_api_key_here
+
+# === 存储配置 ===
+# 选择用于存储图片的后端。
+# 可选项: 'local' (本地存储) 或 's3' (S3 兼容存储，如 AWS S3, R2, MinIO)
+STORAGE_TYPE=local
+
+# --- 本地存储设置 (当 STORAGE_TYPE=local 时) ---
+# 相对于应用程序根目录的图片存储路径。
+LOCAL_STORAGE_PATH=static/images
+
+# --- S3 存储设置 (当 STORAGE_TYPE=s3 时) ---
+# 当 STORAGE_TYPE 为 's3' 时需要填写。
+S3_ENDPOINT=            # S3 兼容存储的端点 URL (例如：s3.amazonaws.com 或您的 MinIO 地址)
+S3_REGION=              # S3 存储桶所在的区域 (例如：us-east-1)
+S3_ACCESS_KEY=          # S3 访问密钥 ID
+S3_SECRET_KEY=          # S3 访问密钥密文
+S3_BUCKET=              # 要使用的 S3 存储桶名称
+S3_USE_SSL=true           # S3 连接是否使用 SSL/TLS (true/false)
+# 可选: 指定一个自定义域名/CDN URL 用于提供图片访问。
+# 如果设置了，图片 URL 将使用此域名而非 S3 端点。
+# 示例: https://cdn.yourdomain.com
+CUSTOM_DOMAIN=
+
+# === Redis 配置 (可选) ===
+# 启用 Redis 以提高存储元数据和标签的性能。
+# 如果为 false，元数据将作为 JSON 文件存储在图片旁边。
+REDIS_ENABLED=false
+
+# --- Redis 连接设置 (当 REDIS_ENABLED=true 时) ---
+REDIS_HOST=localhost      # Redis 服务器主机名或 IP 地址
+REDIS_PORT=6379           # Redis 服务器端口
+REDIS_PASSWORD=          # Redis 密码 (如果没有则留空)
+REDIS_DB=0                # Redis 数据库编号
+REDIS_PREFIX=imageflow:   # 存储在 Redis 中所有键的前缀，以避免冲突
+REDIS_TLS_ENABLED=false   # Redis 连接是否启用 TLS/SSL (true/false)
+
+# === 图像处理配置 ===
+# 单个上传请求中允许的最大图片数量。
+MAX_UPLOAD_COUNT=20
+# WebP/AVIF 转换的质量设置 (1-100, 越高表示质量越好，文件越大)。
+IMAGE_QUALITY=80
+# 用于图像转换任务的并发线程数。
+WORKER_THREADS=4
+# AVIF 压缩效果/速度 (0-10, 越低越快，越高提供更好的压缩率)。
+COMPRESSION_EFFORT=6
+# 强制对 WebP/AVIF 进行无损压缩 (true/false)。可能会显著增加文件大小。
+FORCE_LOSSLESS=false
+
+# === 清理配置 ===
+# 检查并删除过期图片的间隔时间 (例如：1h, 30m, 24h)。
+# 如果未设置或无效，默认为 24h。
+CLEANUP_INTERVAL=24h
+```
+
+**注意:**
+
+*   修改 `.env` 文件后，记得**重启 ImageFlow 服务**才能使更改生效。
+*   对于 S3 存储，请确保提供的凭证对指定的存储桶具有必要的权限 (例如：`s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket`)。
+*   如果使用 Redis，请确保 Redis 服务器正在运行并且 ImageFlow 应用程序可以访问它。 

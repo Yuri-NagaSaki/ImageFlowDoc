@@ -1,0 +1,193 @@
+---
+title: API Reference
+description: Detailed reference for the ImageFlow API endpoints.
+---
+
+This section provides details about the available API endpoints.
+
+**Authentication:** Endpoints marked with `API key required` need a valid `X-API-Key` header matching the `API_KEY` set in your configuration.
+
+---
+
+### `GET /api/random`
+
+Retrieves a URL for a random image, adapting to browser capabilities (WebP/AVIF support) and optionally filtered by tag.
+
+-   **Method:** `GET`
+-   **Authentication:** Not required
+-   **Query Parameters:**
+    -   `tag` (string, optional): Filter images by a specific tag.
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `text/plain`
+    -   Body: URL of the image (e.g., `http://localhost:8686/static/images/landscape/webp/image-id.webp`)
+-   **Error Response:**
+    -   Code: `404 Not Found` - If no image matches the criteria.
+    -   Code: `500 Internal Server Error` - If an unexpected error occurs.
+
+---
+
+### `POST /api/upload`
+
+Uploads one or more new images, processes them, and stores them.
+
+-   **Method:** `POST`
+-   **Authentication:** `API key required`
+-   **Request Body:** `multipart/form-data`
+    -   `images[]` (file, required): One or more image files to upload.
+    -   `expiryMinutes` (integer, optional): Time in minutes until the image expires and is deleted. 0 or omitted means no expiration.
+    -   `tags` (string array, optional): Tags to associate with the uploaded images.
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: JSON object with a success message. `{"message":"Upload successful, processing started."}`
+-   **Error Response:**
+    -   Code: `400 Bad Request` - Missing `images[]` field, invalid `expiryMinutes`, or too many files.
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Code: `500 Internal Server Error` - Error during file saving or processing initiation.
+
+---
+
+### `POST /api/delete-image`
+
+Deletes a specific image and all its associated formats (original, WebP, AVIF) and metadata.
+
+-   **Method:** `POST`
+-   **Authentication:** `API key required`
+-   **Request Body:** `application/json`
+    ```json
+    {
+      "id": "image-id-to-delete",
+      "storageType": "local" // or "s3"
+    }
+    ```
+    -   `id` (string, required): The unique ID of the image to delete.
+    -   `storageType` (string, required): The storage type where the image resides (`local` or `s3`).
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: `{"message":"Image deleted successfully"}`
+-   **Error Response:**
+    -   Code: `400 Bad Request` - Invalid JSON payload or missing fields.
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Code: `404 Not Found` - Image with the specified ID not found.
+    -   Code: `500 Internal Server Error` - Error during deletion from storage or metadata removal.
+
+---
+
+### `POST /api/validate-api-key`
+
+Validates the provided API key.
+
+-   **Method:** `POST`
+-   **Authentication:** Checks the `X-API-Key` header.
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: `{"valid": true}`
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Body: `{"valid": false}`
+
+---
+
+### `GET /api/images`
+
+Lists all uploaded images, optionally filtered by tag.
+
+-   **Method:** `GET`
+-   **Authentication:** `API key required`
+-   **Query Parameters:**
+    -   `tag` (string, optional): Filter images by a specific tag.
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: JSON array of image metadata objects.
+        ```json
+        [
+          {
+            "id": "unique-id-1",
+            "filename": "image1.jpg",
+            "contentType": "image/jpeg",
+            "size": 102400,
+            "width": 1920,
+            "height": 1080,
+            "orientation": "landscape",
+            "storageType": "local",
+            "uploadTime": "2023-10-27T10:00:00Z",
+            "expiryTime": null, // or "2023-11-27T10:00:00Z"
+            "tags": ["nature", "landscape"],
+            "formats": {
+              "original": "/static/images/original/landscape/unique-id-1.jpg",
+              "webp": "/static/images/landscape/webp/unique-id-1.webp",
+              "avif": "/static/images/landscape/avif/unique-id-1.avif"
+            }
+          }
+          // ... more images
+        ]
+        ```
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Code: `500 Internal Server Error` - Error reading metadata.
+
+---
+
+### `GET /api/config`
+
+Retrieves the current (non-sensitive) system configuration.
+
+-   **Method:** `GET`
+-   **Authentication:** `API key required`
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: JSON object containing configuration details like `STORAGE_TYPE`, `MAX_UPLOAD_COUNT`, `REDIS_ENABLED`, etc. (Sensitive keys like `API_KEY`, `S3_SECRET_KEY` are omitted).
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+
+---
+
+### `POST /api/trigger-cleanup`
+
+Manually triggers the process to clean up expired images.
+
+-   **Method:** `POST`
+-   **Authentication:** `API key required`
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: `{"message":"Expired image cleanup triggered."}`
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+
+---
+
+### `GET /api/tags`
+
+Retrieves a list of all unique tags currently associated with images.
+
+-   **Method:** `GET`
+-   **Authentication:** `API key required`
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: JSON array of unique tag strings. `["nature", "city", "portrait", "landscape"]`
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Code: `500 Internal Server Error` - Error retrieving tags.
+
+---
+
+### `GET /api/debug/tags`
+
+Retrieves detailed tag information, showing which images are associated with each tag. (Intended for debugging).
+
+-   **Method:** `GET`
+-   **Authentication:** `API key required`
+-   **Success Response:**
+    -   Code: `200 OK`
+    -   Content-Type: `application/json`
+    -   Body: JSON object where keys are tags and values are arrays of image IDs. `{"nature": ["id1", "id3"], "city": ["id2"]}`
+-   **Error Response:**
+    -   Code: `401 Unauthorized` - Invalid or missing API key.
+    -   Code: `500 Internal Server Error` - Error retrieving tag details. 
