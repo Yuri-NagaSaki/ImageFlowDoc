@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { HeroSection } from '@/components/hero-section';
 import { CarouselSection } from '@/components/carousel-section';
-import { FeaturesSection } from '@/components/features-section';
 import { ImageLightbox } from '@/components/image-lightbox';
 import { imagesData } from '@/components/data/images-data';
 
