@@ -31,10 +31,4 @@ export const imagesData: ImageItem[] = [
     width: 1920,
     height: 1080
   },
-  { 
-    src: '/img/image6.png', 
-    alt: 'ImageFlow Screenshot 6',
-    width: 1920,
-    height: 1080
-  }
 ]; 

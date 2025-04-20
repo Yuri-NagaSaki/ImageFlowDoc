@@ -5,7 +5,6 @@ import { HeroSection } from '@/components/hero-section';
 import { CarouselSection } from '@/components/carousel-section';
 import { FeaturesSection } from '@/components/features-section';
 import { ImageLightbox } from '@/components/image-lightbox';
-import { featuresData } from '@/components/data/features-data';
 import { imagesData } from '@/components/data/images-data';
 
 export default function HomePage() {
@@ -32,8 +31,6 @@ export default function HomePage() {
         onViewImage={handleViewImage} 
       />
 
-      {/* Features Section */}
-      <FeaturesSection features={featuresData} />
 
       {/* Lightbox Component */}
       <ImageLightbox

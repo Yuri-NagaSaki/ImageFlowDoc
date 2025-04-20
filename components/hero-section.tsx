@@ -15,9 +15,6 @@ export function HeroSection() {
       <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent animate-gradient">
         ImageFlow Documentation
       </h1>
-      <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-        现代化的图像处理文档系统，为开发者提供清晰、直观的指南。
-      </p>
       <div className="flex justify-center gap-4 pt-4">
         <Link
           href="/docs"
