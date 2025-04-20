@@ -34,8 +34,18 @@ export const baseOptions: BaseLayoutProps = {
   },
   links: [
     {
-      text: 'Documentation',
+      text: '文档',
       url: '/docs',
+      active: 'nested-url',
+    },
+    {
+      text: '博客',
+      url: 'https://catcat.blog',
+      active: 'nested-url',
+    },
+    {
+      text: 'GitHub',
+      url: 'https://github.com/Yuri-NagaSaki/ImageFlow',
       active: 'nested-url',
     },
   ],
