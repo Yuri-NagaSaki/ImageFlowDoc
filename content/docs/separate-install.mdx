@@ -38,8 +38,6 @@ ImageFlow 支持多种部署方式。这里我们将介绍使用 Docker Compose 
           - STORAGE_TYPE=${STORAGE_TYPE:-local}
           - LOCAL_STORAGE_PATH=/app/static/images
           # ... (其他 S3, Redis 等配置，根据需要修改) ...
-          - REDIS_ENABLED=${REDIS_ENABLED:-true}
-          - REDIS_HOST=redis
         restart: unless-stopped
         depends_on:
           - redis
@@ -52,7 +50,6 @@ ImageFlow 支持多种部署方式。这里我们将介绍使用 Docker Compose 
         ports:
           - "3000:3000"
         environment:
-          # 必须设置！指向您的后端服务地址
           - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8686}
           - NEXT_PUBLIC_REMOTE_PATTERNS=${NEXT_PUBLIC_REMOTE_PATTERNS:-localhost:8686}
         depends_on:
@@ -132,8 +129,6 @@ ImageFlow 支持多种部署方式。这里我们将介绍使用 Docker Compose 
         environment:
           - API_KEY=${API_KEY:-default_api_key} # 请务必修改为强密码
           # ... (其他配置与 docker-compose-separate.yaml 类似) ...
-          - REDIS_ENABLED=${REDIS_ENABLED:-true}
-          - REDIS_HOST=redis
         restart: unless-stopped
         depends_on:
           - redis
